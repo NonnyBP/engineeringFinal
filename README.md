@@ -1,2 +1,2 @@
 # engineeringFinal
-app for final project
+Android application that promotes safe driving.
