@@ -37,6 +37,11 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    public void start_rewards_activity(View view) {
+        Intent intent = new Intent(this, rewards.class);
+        startActivity(intent);
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
