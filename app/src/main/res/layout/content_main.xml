@@ -24,12 +24,13 @@
         android:textAlignment="center"/>
 
     <Button
-        android:text="Profile"
+        android:text="@string/profile_button_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
         android:layout_marginStart="33dp"
         android:layout_marginBottom="118dp"
-        android:id="@+id/profileButton" />
+        android:id="@+id/profileButton"
+        android:onClick="start_profile_activity"/>
 </RelativeLayout>
