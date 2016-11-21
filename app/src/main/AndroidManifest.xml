@@ -23,7 +23,7 @@
         <activity android:name=".rewards"></activity>
 
 
-        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCQr7AitxoQAlgpp-8mzevMj3Pwn86PSRQ"/>
@@ -32,5 +32,5 @@
             android:value="@integer/google_play_services_version" />
 
     </application>
-
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 </manifest>
