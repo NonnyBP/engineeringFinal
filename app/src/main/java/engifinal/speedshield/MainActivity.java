@@ -1,15 +1,20 @@
 package engifinal.speedshield;
 
 import android.content.Intent;
+import android.location.Address;
+import android.location.Location;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+
+import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -20,6 +25,9 @@ import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.support.v4.content.ContextCompat;
@@ -40,6 +48,15 @@ import android.widget.Toast;
 import javax.net.ssl.HttpsURLConnection;
 import org.greenrobot.eventbus.EventBus;
 
+import io.nlopez.smartlocation.OnActivityUpdatedListener;
+import io.nlopez.smartlocation.OnGeofencingTransitionListener;
+import io.nlopez.smartlocation.OnLocationUpdatedListener;
+import io.nlopez.smartlocation.OnReverseGeocodingListener;
+import io.nlopez.smartlocation.SmartLocation;
+import io.nlopez.smartlocation.geofencing.model.GeofenceModel;
+import io.nlopez.smartlocation.geofencing.utils.TransitionGeofence;
+import io.nlopez.smartlocation.location.providers.LocationGooglePlayServicesProvider;
+
 /**
  * TODO: in this order
  * 1. Update user location on map at 0.5s intervals
@@ -53,7 +70,8 @@ import org.greenrobot.eventbus.EventBus;
  */
 public class MainActivity extends AppCompatActivity implements  OnMyLocationButtonClickListener,
         OnMapReadyCallback,
-        ActivityCompat.OnRequestPermissionsResultCallback  {
+        ActivityCompat.OnRequestPermissionsResultCallback,
+        OnLocationUpdatedListener, OnActivityUpdatedListener{
 
     /**
      * Request code for location permission request.
@@ -69,6 +87,9 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     private boolean mPermissionDenied = false;
 
     private GoogleMap mMap;
+    private LocationGooglePlayServicesProvider provider;
+
+    private static final int LOCATION_PERMISSION_ID = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,9 +98,35 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        //--------loco---------
+        // Bind event clicks
+        Button startLocation = (Button) findViewById(R.id.start_location);
+        startLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Location permission not granted
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_ID);
+                    return;
+                }
+                startLocation();
+            }
+        });
+
+        Button stopLocation = (Button) findViewById(R.id.stop_location);
+        stopLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                stopLocation();
+            }
+        });
+
+        //-----------end loco------------
+
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
 
        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -105,6 +152,104 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             }
         });
     }
+
+    private void startLocation() {
+
+        provider = new LocationGooglePlayServicesProvider();
+        provider.setCheckLocationSettings(true);
+
+        SmartLocation smartLocation = new SmartLocation.Builder(this).logging(true).build();
+
+        smartLocation.location(provider).start(this);
+        smartLocation.activity().start(this);
+
+    }
+
+    private void stopLocation() {
+        SmartLocation.with(this).location().stop();
+
+        SmartLocation.with(this).activity().stop();
+
+
+    }
+
+    @Override
+    public void onActivityUpdated(DetectedActivity detectedActivity) {
+        showActivity(detectedActivity);
+    }
+
+    private void showActivity(DetectedActivity detectedActivity) {
+        if (detectedActivity != null) {
+            System.out.println(
+                    String.format("Activity %s with %d%% confidence",
+                            getNameFromType(detectedActivity),
+                            detectedActivity.getConfidence())
+            );
+        } else {
+            System.out.println("Null activity");
+        }
+    }
+
+    private void showLocation(Location location) {
+        if (location != null) {
+            final String text = String.format("Latitude %.6f, Longitude %.6f",
+                    location.getLatitude(),
+                    location.getLongitude());
+            System.out.println("Location: " + text);
+
+            // We are going to get the address for the current position
+            SmartLocation.with(this).geocoding().reverse(location, new OnReverseGeocodingListener() {
+                @Override
+                public void onAddressResolved(Location original, List<Address> results) {
+                    if (results.size() > 0) {
+                        Address result = results.get(0);
+                        StringBuilder builder = new StringBuilder(text);
+                        builder.append("\n[Reverse Geocoding] ");
+                        List<String> addressElements = new ArrayList<>();
+                        for (int i = 0; i <= result.getMaxAddressLineIndex(); i++) {
+                            addressElements.add(result.getAddressLine(i));
+                        }
+                        builder.append(TextUtils.join(", ", addressElements));
+                        System.out.println(builder.toString());
+                    }
+                }
+            });
+        } else {
+            System.out.println("Null location");
+        }
+    }
+
+    @Override
+    public void onLocationUpdated(Location location) {
+        showLocation(location);
+    }
+
+    private String getNameFromType(DetectedActivity activityType) {
+        switch (activityType.getType()) {
+            case DetectedActivity.IN_VEHICLE:
+                return "in_vehicle";
+            case DetectedActivity.ON_BICYCLE:
+                return "on_bicycle";
+            case DetectedActivity.ON_FOOT:
+                return "on_foot";
+            case DetectedActivity.STILL:
+                return "still";
+            case DetectedActivity.TILTING:
+                return "tilting";
+            default:
+                return "unknown";
+        }
+    }
+
+
+
+
+
+
+
+
+
+
 
     @Override
     public void onMapReady(GoogleMap map) {
