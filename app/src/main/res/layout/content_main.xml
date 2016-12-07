@@ -23,27 +23,6 @@
         android:textAlignment="center"/>
 
     <Button
-        android:text="@string/profile_button_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="31dp"
-        android:layout_marginBottom="118dp"
-        android:id="@+id/profileButton"
-        android:onClick="start_profile_activity"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true" />
-
-    <Button
-        android:text="@string/rewards_button_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/profileButton"
-        android:layout_alignParentEnd="true"
-        android:layout_marginEnd="67dp"
-        android:id="@+id/rewardsButton"
-        android:onClick="start_rewards_activity"/>
-
-    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="StartLocation"
@@ -74,11 +53,13 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true">
 
-        <fragment xmlns:android="http://schemas.android.com/apk/res/android"
-            android:id="@+id/map"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            class="com.google.android.gms.maps.SupportMapFragment" />
+            <fragment
+                android:id="@+id/map"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                class="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentStart="true" />
 
         </RelativeLayout>
 

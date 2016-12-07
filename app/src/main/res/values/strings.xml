@@ -6,6 +6,6 @@
     <string name="location_permission_denied">Location Permission Denied</string>
     <string name ="permission_required_toast">Permission Required to Work</string>
     <string name="permission_rationale_location">Need location to find speedLim</string>
-    <string name="default_speed_limit">-1 mph</string>
+    <string name="default_speed_limit">-1</string>
     <string name="default_speed">0 mph</string>
 </resources>

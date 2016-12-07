@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_profile"
     android:layout_width="match_parent"
@@ -11,51 +12,98 @@
     tools:context="engifinal.speedshield.profile">
 
     <TextView
-        android:text="Item 1"
+        android:text="Lifetime Points: 83,951"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:id="@+id/textView" />
-
-    <TextView
-        android:text="Item 3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="56dp"
+        android:layout_marginTop="30dp"
         android:id="@+id/textView3"
         android:layout_below="@+id/textView2"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
 
     <TextView
-        android:text="Item 2"
+        android:text="Current Points: 30,951"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="52dp"
-        android:id="@+id/textView2"
-        android:layout_below="@+id/textView"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+        android:layout_marginTop="30dp"
+        android:id="@+id/textViewPoint"
+        android:layout_below="@+id/textView4" />
+
 
     <TextView
-        android:text="Item 4"
+        android:text="Points Spent: 53,000"
         android:layout_width="wrap_content"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
         android:layout_height="wrap_content"
         android:layout_below="@+id/textView3"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
-        android:layout_marginTop="61dp"
+        android:layout_marginTop="30dp"
         android:id="@+id/textView4" />
 
     <TextView
-        android:text="Item 5"
+        android:text="Rewards Claimed: 5"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/textView4"
+        android:layout_below="@+id/textViewPoint"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
-        android:layout_marginTop="79dp"
+        android:layout_marginTop="30dp"
         android:id="@+id/textView5" />
+
+    <TextView
+        android:text="Miles Driven: 833 mi."
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:id="@+id/textView2"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="Name: Spongebob Squarepants"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+        android:layout_marginTop="178dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:scaleX="2"
+        android:scaleY="2"
+        android:layout_height="wrap_content"
+        app:srcCompat="@drawable/spongebob"
+        android:id="@+id/imageView2"
+        android:layout_marginStart="28dp"
+        android:layout_marginTop="30dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:srcCompat="@drawable/green_thumb"
+        android:id="@+id/imageView3"
+        android:scaleX=".5"
+        android:scaleY=".5"
+        android:layout_marginStart="12dp"
+        android:layout_alignTop="@+id/imageView2"
+        android:layout_toEndOf="@+id/textView7" />
+
+    <TextView
+        android:text="Driving Status:"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView7"
+        android:textColor="@color/common_google_signin_btn_text_dark_focused"
+        android:layout_alignBottom="@+id/imageView3"
+        android:layout_toEndOf="@+id/textView3"
+        android:layout_marginBottom="11dp" />
 </RelativeLayout>
