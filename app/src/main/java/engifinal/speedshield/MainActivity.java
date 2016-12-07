@@ -59,13 +59,11 @@ import io.nlopez.smartlocation.location.providers.LocationGooglePlayServicesProv
 
 /**
  * TODO: in this order
- * 1. Update user location on map at 0.5s intervals
- * 2. Pass in location into the HTTP get
- * 3. Parse the HTTP get JSON response to only get Speed limit
- * 4. Display speed limit of current location to console
- * 5. Display speed limit of current location to place on Activity
- * 6. Display current speed on Activity
- * 7. Reduce size of map
+ * 1. keep speed lim on
+ * 2. if app is on, check if moving at sufficient speed
+ * 3. if so, get speed limit of area and track velo
+ *    a. speed limit checked every minute. velo checked every 1/4 sec
+ * 4. if velocity is below 10mph for 4 minutes, stop tracking
  * 8. Done
  */
 public class MainActivity extends AppCompatActivity implements  OnMyLocationButtonClickListener,
@@ -88,6 +86,8 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
 
     private GoogleMap mMap;
     private LocationGooglePlayServicesProvider provider;
+    private Location currentLocation;
+    private double speedLimit;
 
     private static final int LOCATION_PERMISSION_ID = 1001;
 
@@ -99,17 +99,21 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
         setSupportActionBar(toolbar);
 
         //--------loco---------
-        // Bind event clicks
-        Button startLocation = (Button) findViewById(R.id.start_location);
-        startLocation.setOnClickListener(new View.OnClickListener() {
+
+        //Stall until user enables location
+        while (ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_ID);
+        }
+        startLocation();
+
+        Button getCoordinates = (Button) findViewById(R.id.coordinate_button);
+        getCoordinates.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Location permission not granted
-                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_ID);
-                    return;
-                }
-                startLocation();
+                showLocation(currentLocation);
             }
         });
 
@@ -135,13 +139,14 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
 
-                //New thread for HTTP GET
+                //New thread for HTTP GET to get Speed Limit
                 Thread thread = new Thread(new Runnable() {
 
                     @Override
                     public void run() {
                         try  {
-                            httpGet();
+                            speedLimit = getSpeedLimit();
+                            //speedLimitText = speedLimit.toString();
                         } catch (Exception e) {
                             //e.printStackTrace();
                         }
@@ -221,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
 
     @Override
     public void onLocationUpdated(Location location) {
-        showLocation(location);
+        currentLocation = location;
     }
 
     private String getNameFromType(DetectedActivity activityType) {
@@ -317,9 +322,14 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 .newInstance(true).show(getSupportFragmentManager(), "dialog");
     }
 
-    public void httpGet() throws Exception {
+    public int getSpeedLimit() throws Exception {
+        int speedLim = -1;
         try {
-            String url = "https://route.cit.api.here.com/routing/7.2/getlinkinfo.json?waypoint=52.5308%2C13.3846&app_id=ZQJA8fSBp8MZzFFMFcF8&app_code=Hobr4vTPttml3HNkFByD2g";
+            String latString = Double.toString(currentLocation.getLatitude());
+            String longString = Double.toString(currentLocation.getLongitude());
+
+            System.out.println("trying to get location of latlong: " + latString + ", " + longString);
+            String url = "https://route.cit.api.here.com/routing/7.2/getlinkinfo.json?waypoint=" + latString +"%2C" + longString + "&app_id=ZQJA8fSBp8MZzFFMFcF8&app_code=Hobr4vTPttml3HNkFByD2g";
 
             URL obj = new URL(url);
             HttpURLConnection con = (HttpURLConnection) obj.openConnection();
@@ -344,13 +354,37 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             }
             in.close();
 
+            String speedLimitString = new String();
+            //get speed limit as string
+            for (int i = response.length() - 1; i > 0; i--)
+            {
+                if (response.charAt(i) == ':' && Character.isDigit(response.charAt(i+1)) &&
+                    response.charAt(i-1) == '"')
+                {
+                    for (int j = i+1; response.charAt(j) != '}'; j++)
+                    {
+                        speedLimitString += response.charAt(j);
+                    }
+                    i = -1;
+                }
+                if (i == 0)
+                    speedLimitString = "-1";
+            }
+
+            //convert string to double
+            Double speedLimAsDouble = Double.parseDouble(speedLimitString) * 2.2369; //convert m/s to mph
+            speedLim = speedLimAsDouble.intValue();
+
             //print result
-            System.out.println(response.toString());
+            System.out.println("Speed limit was: " + speedLim +  " mph!");
+            System.out.println("our speed is: " + Double.toString(currentLocation.getSpeed()));
+
         }
         catch(Exception e) {
             System.out.println("exception caught undhandled");
             System.out.println(e + " was the exception");
         }
+        return speedLim;
     }
     public void start_profile_activity(View view) {
         Intent intent = new Intent(this, profile.class);
