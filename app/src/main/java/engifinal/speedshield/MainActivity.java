@@ -184,9 +184,9 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 FileOutputStream fos = new FileOutputStream(historyFile);
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
 
-                bw.write("0");
+                bw.write("1561");
                 bw.newLine();
-                bw.write("0");
+                bw.write("189");
                 bw.newLine();
                 bw.write("0");
 
