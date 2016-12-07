@@ -36,6 +36,7 @@ import com.google.android.gms.maps.GoogleMap.OnMyLocationButtonClickListener;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 
+import android.widget.TextView;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -87,16 +88,24 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     private GoogleMap mMap;
     private LocationGooglePlayServicesProvider provider;
     private Location currentLocation;
-    private double speedLimit;
+    private int speedLimit;
+    private double lastTimeUpdatedLimit;
+    private double lastTimeDriving;
 
     private static final int LOCATION_PERMISSION_ID = 1001;
-
+    private TextView speedLimitTextView;
+    private TextView currentSpeedTextView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        speedLimit = -1;
+        lastTimeUpdatedLimit = System.currentTimeMillis();
+        speedLimitTextView = (TextView) findViewById(R.id.speedLimitNumView);
+        currentSpeedTextView = (TextView) findViewById(R.id.currentSpeedNumView);
 
         //--------loco---------
 
@@ -109,53 +118,12 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
         }
         startLocation();
 
-        Button getCoordinates = (Button) findViewById(R.id.coordinate_button);
-        getCoordinates.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showLocation(currentLocation);
-            }
-        });
-
-        Button stopLocation = (Button) findViewById(R.id.stop_location);
-        stopLocation.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                stopLocation();
-            }
-        });
-
         //-----------end loco------------
 
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-
-       FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view)  {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-
-                //New thread for HTTP GET to get Speed Limit
-                Thread thread = new Thread(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        try  {
-                            speedLimit = getSpeedLimit();
-                            //speedLimitText = speedLimit.toString();
-                        } catch (Exception e) {
-                            //e.printStackTrace();
-                        }
-                    }
-                });
-
-                thread.start();
-            }
-        });
     }
 
     private void startLocation() {
@@ -181,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     @Override
     public void onActivityUpdated(DetectedActivity detectedActivity) {
         showActivity(detectedActivity);
+        System.out.println("hoho");
     }
 
     private void showActivity(DetectedActivity detectedActivity) {
@@ -227,6 +196,33 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     @Override
     public void onLocationUpdated(Location location) {
         currentLocation = location;
+
+        if (currentLocation.getSpeed() >= 6.7056) //20 mph threshold
+        {
+            lastTimeDriving = System.currentTimeMillis();
+            int currentSpeedMph = (int) (currentLocation.getSpeed() * 2.2369);
+            currentSpeedTextView.setText(Integer.toString(currentSpeedMph) + " MPH");
+
+            if (System.currentTimeMillis() - lastTimeUpdatedLimit >= 120000) {
+                Thread thread = new Thread(new Runnable(){
+                    @Override
+                    public void run(){
+                        try {
+                            updateSpeedLimit();
+                            
+                        }
+                        catch(Exception e) {
+                            System.out.println("something bad happened with speed lim");
+                        }
+                    }
+                });
+                thread.start();
+            }
+        }
+        //stop driving mode if stopped for 1.5 minutes or longer
+        else if (System.currentTimeMillis() - lastTimeDriving >= 90000) {
+            currentSpeedTextView.setText("<20 MPH");
+        }
     }
 
     private String getNameFromType(DetectedActivity activityType) {
@@ -322,7 +318,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 .newInstance(true).show(getSupportFragmentManager(), "dialog");
     }
 
-    public int getSpeedLimit() throws Exception {
+    public void updateSpeedLimit() throws Exception {
         int speedLim = -1;
         try {
             String latString = Double.toString(currentLocation.getLatitude());
@@ -384,7 +380,9 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             System.out.println("exception caught undhandled");
             System.out.println(e + " was the exception");
         }
-        return speedLim;
+        //update speed limit
+        lastTimeUpdatedLimit = System.currentTimeMillis();
+        speedLimit = speedLim;
     }
     public void start_profile_activity(View view) {
         Intent intent = new Intent(this, profile.class);
