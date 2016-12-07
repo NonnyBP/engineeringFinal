@@ -50,12 +50,9 @@ import javax.net.ssl.HttpsURLConnection;
 import org.greenrobot.eventbus.EventBus;
 
 import io.nlopez.smartlocation.OnActivityUpdatedListener;
-import io.nlopez.smartlocation.OnGeofencingTransitionListener;
 import io.nlopez.smartlocation.OnLocationUpdatedListener;
 import io.nlopez.smartlocation.OnReverseGeocodingListener;
 import io.nlopez.smartlocation.SmartLocation;
-import io.nlopez.smartlocation.geofencing.model.GeofenceModel;
-import io.nlopez.smartlocation.geofencing.utils.TransitionGeofence;
 import io.nlopez.smartlocation.location.providers.LocationGooglePlayServicesProvider;
 
 /**
@@ -91,10 +88,15 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     private int speedLimit;
     private double lastTimeUpdatedLimit;
     private double lastTimeDriving;
+    private long drivingPoints = 0;
+    private boolean streak = false;
+    private long lastReward = 0;
+    private int penaltyCounter = 20;
 
     private static final int LOCATION_PERMISSION_ID = 1001;
     private TextView speedLimitTextView;
     private TextView currentSpeedTextView;
+    private TextView pointsTextView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -106,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
         lastTimeUpdatedLimit = System.currentTimeMillis();
         speedLimitTextView = (TextView) findViewById(R.id.speedLimitNumView);
         currentSpeedTextView = (TextView) findViewById(R.id.currentSpeedNumView);
+        pointsTextView = (TextView) findViewById(R.id.pointsView);
 
         //--------loco---------
 
@@ -149,7 +152,6 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     @Override
     public void onActivityUpdated(DetectedActivity detectedActivity) {
         showActivity(detectedActivity);
-        System.out.println("hoho");
     }
 
     private void showActivity(DetectedActivity detectedActivity) {
@@ -209,7 +211,6 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                     public void run(){
                         try {
                             updateSpeedLimit();
-                            
                         }
                         catch(Exception e) {
                             System.out.println("something bad happened with speed lim");
@@ -218,11 +219,45 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 });
                 thread.start();
             }
+            rewardPoints();
         }
         //stop driving mode if stopped for 1.5 minutes or longer
         else if (System.currentTimeMillis() - lastTimeDriving >= 90000) {
             currentSpeedTextView.setText("<20 MPH");
         }
+    }
+
+    private void rewardPoints() {
+        double currentSpeedMph = currentLocation.getSpeed() * 2.2369;
+        //optimal speed
+        if (currentSpeedMph < (speedLimit * 1.1) && currentSpeedMph > (speedLimit *0.9))
+        {
+            if (streak)
+            {
+                drivingPoints += lastReward +1;
+                lastReward = lastReward +1;
+            }
+            else if (penaltyCounter == 1)
+            {
+                drivingPoints += 1;
+                streak = true;
+                lastReward = 1;
+            }
+            else {
+                penaltyCounter--;
+            }
+        }
+        else if (currentSpeedMph > 5)
+        {
+            streak = false;
+            if (penaltyCounter <= 5)
+                penaltyCounter = 20;
+            else
+                penaltyCounter += penaltyCounter /10;
+        }
+
+        String pointsString = Long.toString(drivingPoints);
+        pointsTextView.setText("Points: " + pointsString);
     }
 
     private String getNameFromType(DetectedActivity activityType) {
@@ -380,9 +415,10 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             System.out.println("exception caught undhandled");
             System.out.println(e + " was the exception");
         }
-        //update speed limit
+        //update speed limit on UI and for this object
         lastTimeUpdatedLimit = System.currentTimeMillis();
         speedLimit = speedLim;
+        speedLimitTextView.setText(Integer.toString(speedLimit));
     }
     public void start_profile_activity(View view) {
         Intent intent = new Intent(this, profile.class);
