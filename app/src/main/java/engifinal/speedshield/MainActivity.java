@@ -22,7 +22,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -45,9 +48,13 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
+import java.io.BufferedWriter;
+import java.io.BufferedReader;
+import java.io.FileOutputStream;
 
 import javax.net.ssl.HttpsURLConnection;
 import org.greenrobot.eventbus.EventBus;
+
 
 import io.nlopez.smartlocation.OnActivityUpdatedListener;
 import io.nlopez.smartlocation.OnLocationUpdatedListener;
@@ -56,13 +63,7 @@ import io.nlopez.smartlocation.SmartLocation;
 import io.nlopez.smartlocation.location.providers.LocationGooglePlayServicesProvider;
 
 /**
- * TODO: in this order
- * 1. keep speed lim on
- * 2. if app is on, check if moving at sufficient speed
- * 3. if so, get speed limit of area and track velo
- *    a. speed limit checked every minute. velo checked every 1/4 sec
- * 4. if velocity is below 10mph for 4 minutes, stop tracking
- * 8. Done
+ *
  */
 public class MainActivity extends AppCompatActivity implements  OnMyLocationButtonClickListener,
         OnMapReadyCallback,
@@ -92,11 +93,21 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
     private boolean streak = false;
     private long lastReward = 0;
     private int penaltyCounter = 20;
+    private long[] historyNumbers = {1, 2, 3};
+    /**
+     * index 0 = lifetime points
+     * index 1 = current driving points
+     * index 2 = total miles driven
+     */
 
+    private boolean didDriveThisSession = false;
     private static final int LOCATION_PERMISSION_ID = 1001;
+    private static final double MPS_TO_MPH_CONSTANT = 2.2369;
     private TextView speedLimitTextView;
     private TextView currentSpeedTextView;
     private TextView pointsTextView;
+
+    private File historyFile;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,6 +120,10 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
         speedLimitTextView = (TextView) findViewById(R.id.speedLimitNumView);
         currentSpeedTextView = (TextView) findViewById(R.id.currentSpeedNumView);
         pointsTextView = (TextView) findViewById(R.id.pointsView);
+
+        //initialize history if needed
+        initializeHistoryFiles();
+        pointsTextView.setText("Points: " + historyNumbers[1]);
 
         //--------loco---------
 
@@ -127,6 +142,62 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+    }
+
+    private void updateHistoryNumberArray() {
+        try {
+            FileInputStream fIn = new FileInputStream(historyFile);
+            BufferedReader input = new BufferedReader(new InputStreamReader(fIn));
+            for (int i = 0; i < 3; i++)
+            {
+                historyNumbers[i] = Long.parseLong(input.readLine());
+            }
+            input.close();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initializeHistoryFiles() {
+        File historyFile = new File(getFilesDir() + "/history.txt");
+        if (historyFile.isFile()) {
+            try {
+                FileInputStream fIn = new FileInputStream(historyFile);
+                BufferedReader input = new BufferedReader(new InputStreamReader(fIn));
+                for (int i = 0; i < 3; i++)
+                {
+                    historyNumbers[i] = Long.parseLong(input.readLine());
+                }
+                input.close();
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        else {
+            System.out.println("didn't find history file. creating new history file at " +
+            historyFile.toString());
+
+            try {
+                historyFile.createNewFile();
+                FileOutputStream fos = new FileOutputStream(historyFile);
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+
+                bw.write("0");
+                bw.newLine();
+                bw.write("0");
+                bw.newLine();
+                bw.write("0");
+
+                bw.close();
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+                System.out.println("history file failed to create for some reason!");
+            }
+        }
     }
 
     private void startLocation() {
@@ -201,8 +272,9 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
 
         if (currentLocation.getSpeed() >= 6.7056) //20 mph threshold
         {
+            didDriveThisSession = true;
             lastTimeDriving = System.currentTimeMillis();
-            int currentSpeedMph = (int) (currentLocation.getSpeed() * 2.2369);
+            int currentSpeedMph = (int) (currentLocation.getSpeed() * MPS_TO_MPH_CONSTANT);
             currentSpeedTextView.setText(Integer.toString(currentSpeedMph) + " MPH");
 
             if (System.currentTimeMillis() - lastTimeUpdatedLimit >= 120000) {
@@ -222,13 +294,34 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             rewardPoints();
         }
         //stop driving mode if stopped for 1.5 minutes or longer
-        else if (System.currentTimeMillis() - lastTimeDriving >= 90000) {
+        else if (System.currentTimeMillis() - lastTimeDriving >= 90000 && didDriveThisSession) {
             currentSpeedTextView.setText("<20 MPH");
+
+            //update vals in history
+            try {
+                FileOutputStream fos = new FileOutputStream(historyFile);
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+
+                for (int i = 0; i < 2; i++) {
+                    bw.write(Long.toString(historyNumbers[i] + drivingPoints));
+                    bw.newLine();
+                }
+
+                drivingPoints = 0;
+                bw.close();
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+
+            updateHistoryNumberArray();
+            pointsTextView.setText(Long.toString(historyNumbers[1]));
         }
     }
 
     private void rewardPoints() {
-        double currentSpeedMph = currentLocation.getSpeed() * 2.2369;
+        double currentSpeedMph = currentLocation.getSpeed() * MPS_TO_MPH_CONSTANT;
         //optimal speed
         if (currentSpeedMph < (speedLimit * 1.1) && currentSpeedMph > (speedLimit *0.9))
         {
@@ -256,7 +349,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
                 penaltyCounter += penaltyCounter /10;
         }
 
-        String pointsString = Long.toString(drivingPoints);
+        String pointsString = Long.toString(drivingPoints + historyNumbers[1]);
         pointsTextView.setText("Points: " + pointsString);
     }
 
@@ -403,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements  OnMyLocationButt
             }
 
             //convert string to double
-            Double speedLimAsDouble = Double.parseDouble(speedLimitString) * 2.2369; //convert m/s to mph
+            Double speedLimAsDouble = Double.parseDouble(speedLimitString) * MPS_TO_MPH_CONSTANT; //convert m/s to mph
             speedLim = speedLimAsDouble.intValue();
 
             //print result
